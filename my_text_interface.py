@@ -18,7 +18,7 @@ class MyDialog:
         self.e.pack(padx=15)
 
         self.entry_frame.pack(side=tk.TOP, fill=tk.BOTH)
-        
+
         self.log_frame = tk.Frame(parent)
         self.text = tk.Text(self.log_frame)
         self.text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -30,7 +30,7 @@ class MyDialog:
         self.scroll.config(command=self.text.yview)
 
         self.log_frame.pack(side=tk.BOTTOM)
-        
+
         self.fBottom = tk.Frame(top)
 
         c = tk.Button(self.fBottom, text="Close", command=self.close)
@@ -47,10 +47,14 @@ class MyDialog:
 
         #setup other stuff
         self.log_frame.bind('<<display-text>>', self.display_text_handler)
-        
+
         self.message = Queue.Queue()
 
         self.parsed_plan = ""
+
+        self.originalPlan = []
+        self.plan = []
+
 
     def parse(self):
         if self.parsed_plan == "":
@@ -60,7 +64,7 @@ class MyDialog:
             self.log_info("{0} -> {1}".format(self.value, self.parsed_plan))
         else:
             self.log_error("Already parsed plan: {0}, cannot parse new plan.".format(self.parsed_plan))
-        
+
     def semantic_parser(self, plan):
             #Write code for simple semantic grammar here
             #Actions should be returned in the following format:
@@ -72,41 +76,62 @@ class MyDialog:
             return plan
 
         plan = string.lower(plan)
-        words = string.split(plan) # A list of the words in the user command
-        result = plan # In case we cannot parse the plan propperly, return it unmodified
+        self.plan = string.split(plan) # A list of the words in the user command
+        self.originalPlan = [w for w in plan]
+        result = []
 
 
 		#The verb phrase should come first, so look at the first word
 		#If the verb phase is present go ahead and parse the noun phrases
         self.log_info("Expanding sentence 'S' to VP1 NP1 NP3 NP4 | VP2 NP1 NP3 | VP3 NP1 NP4,")
-        self.log_info("the identifying initial verb phrase...")
-        if words[0] == "mov" or words[0] == "move":
-            self.log_info("Case VP1 NP1 NP3 NP4 (\"Move\") found")
-            self.log_info("Identifying noun phrases...")
-            result = "Mov " + self.get_noun_phrases(plan)
-        elif words[0] == "pick":
-            self.log_info("Case VP2 NP1 NP3 (\"Pick\") found.")
-            self.log_info("Identifying noun phrases...")            
-            result = "Pick " + self.get_noun_phrases(plan)
-        elif words[0] == "put":
-            self.log_info("Case VP3 NP1 NP4 (\"Put\") found.")
-            self.log_info("Identifying noun phrases...")            
-            result = "Put " + self.get_noun_phrases(plan)
-        else:
-            self.log_error(words, "Instructions must begin with Move, Pick or Put.")
+        while(self.plan):
+            self.log_info("about to parse words", str(self.plan))
+            self.log_info("the identifying initial verb phrase...")
+            if self.plan[0] == "mov" or self.plan[0] == "move":
+                self.log_info("Case VP1 NP1 NP3 NP4 (\"Move\") found")
+                self.log_info("Identifying noun phrases...")
+                result.append("Mov " + self.get_noun_phrases())
+            elif self.plan[0] == "pick":
+                self.log_info("Case VP2 NP1 NP3 (\"Pick\") found.")
+                self.log_info("Identifying noun phrases...")
+                result.append("Pick " + self.get_noun_phrases())
+            elif self.plan[0] == "put":
+                self.log_info("Case VP3 NP1 NP4 (\"Put\") found.")
+                self.log_info("Identifying noun phrases...")
+                result.append("Put " + self.get_noun_phrases())
+            else:
+                self.log_error(self.plan, "Instructions must begin with Move, Pick or Put.")
+        if not result: return self.plan
+
         return result
-    
-    def get_noun_phrases(self, plan):
+
+    def get_noun_phrases_helper(self):
+
+        endIndex = len(self.plan) - 1
+        begIndex = len(self.plan) - 1
+
+        if("and" in self.plan):
+            endIndex = self.plan.index("and")
+            begIndex = endIndex+1
+        nounPhrase = self.plan[0:endIndex]
+
+        self.plan = self.plan[begIndex:]
+
+        return nounPhrase
+
+    def get_noun_phrases(self):
         """
         Helper method. Given a string representing a plan,
         finds the noun phrases by removing every word other than "disk*" or "pole*.
 		Does not check whether these are in the correct order."
         """
-        words = string.split(plan)
+
         result = ""
         #asssume that the noun phrases are in a fixed order
-        #then just look for the keywords "disk" and "pole", ignoring everything elsee
-        for w in words:
+        #then just look for the keywords "disk" and "pole", ignoring everything else
+        nounPhrase = self.get_noun_phrases_helper()
+
+        for w in nounPhrase:
             if "disk" in w or "pole" in w:
                 self.log_info("\"{0}\" found!".format(w))
                 result += w.title() + " "
@@ -127,16 +152,16 @@ class MyDialog:
     	self.value = "close"
     	print self.value
     	self.top.destroy()
-        
+
     def log_info(self, printable_object, message=""):
         s = "[INFO]{0}:{1}".format(printable_object, message)
         self.message.put(s)
-        self.log_frame.event_generate('<<display-text>>')    
-    
+        self.log_frame.event_generate('<<display-text>>')
+
     def log_error(self, printable_object, message=""):
         s =  "[ERROR]{0}:{1}".format(printable_object, message)
         self.message.put(s)
-        self.log_frame.event_generate('<<display-text>>')        
+        self.log_frame.event_generate('<<display-text>>')
 
     def display_text_handler(self, event=None):
         s = self.message.get()
@@ -151,7 +176,7 @@ def main():
     root.title('Enter Command')
     d = MyDialog(root)
     root.wait_window(d.top)
-   
+
 
 if __name__ == "__main__":
         main()
