@@ -65,6 +65,35 @@ class MyDialog:
         else:
             self.log_error("Already parsed plan: {0}, cannot parse new plan.".format(self.parsed_plan))
 
+    def get_noun_phrases_helper(self):
+
+        endIndex = len(self.plan)
+        begIndex = len(self.plan)
+
+        if("and" in self.plan):
+            endIndex = self.plan.index("and")
+            begIndex = endIndex+1
+        nounPhrase = self.plan[0:endIndex]
+
+        self.plan = self.plan[begIndex:]
+        self.log_info("done with noun phrases: ", str(self.plan))
+
+        return nounPhrase
+
+    def move_splitter(self, movePhrase):
+        """
+        Split a move action into a pick and put action and add it to self.plan
+        """
+        obj = movePhrase[1]
+        toLocation = movePhrase[ movePhrase.index('to') + 1]
+        fromLocation = movePhrase[ movePhrase.index('from') + 1]
+
+        phrase = 'pick up ' + obj + ' from ' + fromLocation + ' and put ' + obj + ' on ' + toLocation
+        if self.plan:
+            self.plan = phrase.split(' ') + ['and'] + self.plan
+        else:
+            self.plan = phrase.split(' ') + self.plan
+
     def semantic_parser(self, plan):
             #Write code for simple semantic grammar here
             #Actions should be returned in the following format:
@@ -75,11 +104,21 @@ class MyDialog:
         if (len(plan) == 0):
             return plan
 
-        plan = string.lower(plan)
+        plan = string.lower(plan).replace('left pole', 'pole1')
+        plan = plan.replace('right pole', 'pole3')
+        plan = plan.replace('middle pole', 'pole2')
         self.plan = string.split(plan) # A list of the words in the user command
         self.originalPlan = [w for w in plan]
         result = []
 
+        # filter out 'it'
+        objects = ['disk1', 'disk2', 'disk3']
+        curObj = ''
+        for i, elem in enumerate(self.plan):
+            if elem in objects:
+                curObj = elem
+            if elem == 'it':
+                self.plan[i] = curObj
 
 		#The verb phrase should come first, so look at the first word
 		#If the verb phase is present go ahead and parse the noun phrases
@@ -90,7 +129,8 @@ class MyDialog:
             if self.plan[0] == "mov" or self.plan[0] == "move":
                 self.log_info("Case VP1 NP1 NP3 NP4 (\"Move\") found")
                 self.log_info("Identifying noun phrases...")
-                result.append("Mov " + self.get_noun_phrases())
+                movePhrase = self.get_noun_phrases_helper()
+                self.move_splitter(movePhrase)
             elif self.plan[0] == "pick":
                 self.log_info("Case VP2 NP1 NP3 (\"Pick\") found.")
                 self.log_info("Identifying noun phrases...")
@@ -106,19 +146,6 @@ class MyDialog:
 
         return result
 
-    def get_noun_phrases_helper(self):
-
-        endIndex = len(self.plan)
-        begIndex = len(self.plan) - 1
-
-        if("and" in self.plan):
-            endIndex = self.plan.index("and")
-            begIndex = endIndex+1
-        nounPhrase = self.plan[0:endIndex]
-
-        self.plan = self.plan[begIndex:]
-
-        return nounPhrase
 
     def get_noun_phrases(self):
         """
