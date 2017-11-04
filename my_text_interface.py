@@ -101,13 +101,14 @@ class MyDialog:
                 result.append("Put " + self.get_noun_phrases())
             else:
                 self.log_error(self.plan, "Instructions must begin with Move, Pick or Put.")
+                break
         if not result: return self.plan
 
         return result
 
     def get_noun_phrases_helper(self):
 
-        endIndex = len(self.plan) - 1
+        endIndex = len(self.plan)
         begIndex = len(self.plan) - 1
 
         if("and" in self.plan):
