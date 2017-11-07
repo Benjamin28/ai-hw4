@@ -65,6 +65,28 @@ class MyDialog:
         else:
             self.log_error("Already parsed plan: {0}, cannot parse new plan.".format(self.parsed_plan))
 
+    def validate_phrase(self, phrase):
+        """
+        Given a single command phrase, it validates if source, Destination
+        and disk are specified based on the action verb.
+        """
+        # Check if disk is given
+        if "disk" not in phrase[1] and "disk" not in phrase[2]:
+            self.log_error("Disk not specified in command: " + str(phrase))
+        if phrase[0] == "mov" or phrase[0] == "move":
+            if "to" not in phrase:
+                self.log_error("Destination not specified in move command: " + str(phrase))
+            if "from" not in phrase:
+                self.log_error("Source not specified in move command: " + str(phrase))
+        
+        elif phrase[0] == "pick":
+            if "from" not in phrase:
+                self.log_error("Source not specified in pick command: " + str(phrase))
+
+        elif phrase[0] == "put":
+            if "to" not in phrase:
+                self.log_error("Destination not specified in put command: " + str(phrase))
+
     def get_noun_phrases_helper(self):
 
         endIndex = len(self.plan)
@@ -84,6 +106,7 @@ class MyDialog:
         """
         Split a move action into a pick and put action and add it to self.plan
         """
+        self.validate_phrase(movePhrase)
         obj = movePhrase[1]
         toLocation = movePhrase[ movePhrase.index('to') + 1]
         fromLocation = movePhrase[ movePhrase.index('from') + 1]
@@ -159,6 +182,7 @@ class MyDialog:
         #then just look for the keywords "disk" and "pole", ignoring everything else
         nounPhrase = self.get_noun_phrases_helper()
 
+        self.validate_phrase(nounPhrase)
         for w in nounPhrase:
             if "disk" in w or "pole" in w:
                 self.log_info("\"{0}\" found!".format(w))
